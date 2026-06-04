@@ -31,10 +31,18 @@ RUN npm run build --prefix gitnexus-shared
 # tree-sitter-proto) and `prepare` (compiles TypeScript via scripts/build.js),
 # both of which need the source tree.
 COPY gitnexus ./gitnexus
-RUN npm ci --prefix gitnexus
+RUN npm install --prefix gitnexus
 
 # Drop dev dependencies for a smaller runtime layer.
 RUN npm prune --omit=dev --prefix gitnexus
+
+# Re-materialize vendored grammars pruned as extraneous by npm prune
+# (tree-sitter-swift, tree-sitter-dart, tree-sitter-proto are not in
+# package.json so npm prune treats them as extraneous and removes them).
+RUN node gitnexus/scripts/materialize-vendor-grammars.cjs \
+ && node gitnexus/scripts/build-tree-sitter-dart.cjs \
+ && node gitnexus/scripts/build-tree-sitter-proto.cjs \
+ && node gitnexus/scripts/build-tree-sitter-swift.cjs
 
 # -- Runtime -----------------------------------------------------------
 # node:22-bookworm-slim
@@ -57,6 +65,8 @@ COPY --from=builder --chown=node:node /app/gitnexus/node_modules ./gitnexus/node
 COPY --from=builder --chown=node:node /app/gitnexus/package.json ./gitnexus/package.json
 COPY --from=builder --chown=node:node /app/gitnexus/scripts/install-duckdb-extension.mjs ./gitnexus/scripts/install-duckdb-extension.mjs
 COPY --from=builder --chown=node:node /app/gitnexus/vendor ./gitnexus/vendor
+COPY --from=builder --chown=node:node /app/gitnexus/hooks ./gitnexus/hooks
+COPY --from=builder --chown=node:node /app/gitnexus/skills ./gitnexus/skills
 
 # Expose the `gitnexus` binary on PATH so the documented Docker workflow
 # (`docker compose exec gitnexus-server gitnexus index /workspace/<repo>`)

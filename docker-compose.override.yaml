@@ -1,0 +1,6 @@
+services:
+  gitnexus-server:
+    image: gitnexus-forked:latest
+    volumes:
+      - gitnexus-data:/data/gitnexus
+      - ${WORKSPACE_DIR:-./workspace}:/workspace
